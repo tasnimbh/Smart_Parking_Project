@@ -1,0 +1,919 @@
+let me telll you about my project ! so fatr you know that we use jakarta ee and wildfly to deveelop our solution !
+
+let me give you all the codes i developpped with you so far :
+here is the general architecture in image 1 !
+
+in java directory and under org.Wildfly.examples:
+in model/user:
+package org.wildfly.examples.model;
+
+import jakarta.persistence.*;
+
+@Entity
+@Table(name = "users") // The table name in the database
+public class User {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(nullable = false, unique = true)
+    private String email;
+
+    @Column(nullable = false)
+    private String password;
+
+    // Getters and Setters
+    public Long getId() {
+        return id;
+    }
+
+    public void setId(Long id) {
+        this.id = id;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public String getPassword() {
+        return password;
+    }
+
+    public void setPassword(String password) {
+        this.password = password;
+    }
+}
+
+
+
+in repository:
+package org.wildfly.examples.repository;
+
+import org.wildfly.examples.model.User;
+
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
+import jakarta.transaction.Transactional;
+import jakarta.enterprise.context.ApplicationScoped;
+
+import java.util.Optional;
+
+@ApplicationScoped
+public class UserRepository {
+
+    @PersistenceContext(unitName = "SmartParkingPU")
+    private EntityManager entityManager;
+
+    @Transactional
+    public void save(User user) {
+        entityManager.persist(user);
+    }
+
+    public Optional<User> findByEmail(String email) {
+        return entityManager.createQuery("SELECT u FROM User u WHERE u.email = :email", User.class)
+                .setParameter("email", email)
+                .getResultStream()
+                .findFirst();
+    }
+}
+
+
+in resource/authresource:
+package org.wildfly.examples.resource;
+
+import org.wildfly.examples.service.UserService;
+
+import jakarta.inject.Inject;
+import jakarta.ws.rs.*;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+
+@Path("/auth")
+public class AuthResource {
+
+    @Inject
+    private UserService userService;
+
+    @POST
+    @Path("/signup")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response signUp(UserDTO userDTO) {
+        boolean success = userService.registerUser(userDTO.getEmail(), userDTO.getPassword());
+        return success ? Response.ok("{\"message\": \"User registered successfully\"}").build()
+                : Response.status(Response.Status.CONFLICT)
+                .entity("{\"message\": \"Email already exists\"}").build();
+    }
+
+    @POST
+    @Path("/signin")
+    @Consumes(MediaType.APPLICATION_JSON)
+    @Produces(MediaType.APPLICATION_JSON)
+    public Response signIn(UserDTO userDTO) {
+        boolean authenticated = userService.authenticateUser(userDTO.getEmail(), userDTO.getPassword());
+        return authenticated ? Response.ok("{\"message\": \"Login successful\"}").build()
+                : Response.status(Response.Status.UNAUTHORIZED)
+                .entity("{\"message\": \"Invalid credentials\"}").build();
+    }
+//    @GET
+//    @Path("/test")
+//    @Produces(MediaType.TEXT_PLAIN)
+//    public String testEndpoint() {
+//        return "AuthResource is working!";
+//    }
+}
+
+
+in service/userservice:
+package org.wildfly.examples.service;
+
+import jakarta.transaction.Transactional;
+import org.mindrot.jbcrypt.BCrypt;
+import org.wildfly.examples.model.User;
+import org.wildfly.examples.repository.UserRepository;
+
+import jakarta.ejb.Stateless;
+import jakarta.inject.Inject;
+import jakarta.enterprise.context.ApplicationScoped;
+
+@ApplicationScoped
+
+public class UserService {
+
+    @Inject
+    private UserRepository userRepository;
+
+
+    @Transactional
+    public boolean registerUser(String email, String plainPassword) {
+        if (userRepository.findByEmail(email).isPresent()) {
+            return false; // Email already exists
+        }
+        User user = new User();
+        user.setEmail(email);
+        user.setPassword(BCrypt.hashpw(plainPassword, BCrypt.gensalt())); // Hash password
+        userRepository.save(user);
+        return true;
+    }
+
+    public boolean authenticateUser(String email, String plainPassword) {
+        return userRepository.findByEmail(email)
+                .filter(user -> BCrypt.checkpw(plainPassword, user.getPassword())) // Compare passwords
+                .isPresent();
+    }
+}
+in smartparkingapplication:
+package org.wildfly.examples;
+
+import jakarta.ws.rs.ApplicationPath;
+import jakarta.ws.rs.core.Application;
+
+@ApplicationPath("/")
+public class SmartParkingApplication extends Application {
+}
+
+in smartparkingendpoint:
+package org.wildfly.examples;
+
+import jakarta.inject.Inject;
+import jakarta.ws.rs.GET;
+import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
+import jakarta.ws.rs.Produces;
+import jakarta.ws.rs.core.MediaType;
+import jakarta.ws.rs.core.Response;
+
+@Path("/")
+public class SmartParkingEndpoint {
+
+    @Inject
+    private SmartParkingService service;
+
+    @GET
+    @Path("/{name}")
+    @Produces(MediaType.TEXT_PLAIN)
+    public Response sayHello(final @PathParam("name") String name) {
+        String response = service.hello(name);
+
+        return Response.ok(response).build();
+    }
+}
+
+in smartparkingservice:
+package org.wildfly.examples;
+
+import jakarta.enterprise.context.ApplicationScoped;
+
+@ApplicationScoped
+public class SmartParkingService {
+
+    public String hello(String name) {
+        return String.format("Hello '%s'.", name);
+    }
+}
+
+in resources/META-INF/persistence.xml:
+<persistence xmlns="http://xmlns.jcp.org/xml/ns/persistence" version="2.2">
+    <persistence-unit name="SmartParkingPU">
+        <class>org.wildfly.examples.model.User</class>
+        <properties>
+            <property name="jakarta.persistence.jdbc.driver" value="org.postgresql.Driver" />
+            <property name="jakarta.persistence.jdbc.url" value="jdbc:postgresql://localhost:5432/smartparking" />
+            <property name="jakarta.persistence.jdbc.user" value="postgres" />
+            <property name="jakarta.persistence.jdbc.password" value="khalildrira" />
+            <property name="hibernate.dialect" value="org.hibernate.dialect.PostgreSQLDialect" />
+            <property name="hibernate.hbm2ddl.auto" value="update" />
+        </properties>
+    </persistence-unit>
+</persistence>
+
+moving on to webapp directory:
+under pages/SignIn.html:
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../assets/css/Auth.css">
+    <title>Sign In</title>
+</head>
+
+<body>
+<div class="auth-layout">
+    <h1>Welcome Back</h1>
+    <p>Sign in to continue to your account</p>
+    <form>
+        <div class="form-group">
+            <p>📧</p>
+            <input type="email" id="email" placeholder="Email address" required>
+            <div class="error-message" id="emailError"></div>
+        </div>
+        <div class="form-group">
+            <p>🔒</p>
+            <input type="password" id="password" placeholder="Password" required>
+            <div class="error-message" id="passwordError"></div>
+        </div>
+        <button type="submit">Sign In</button>
+    </form>
+    <div class="auth-footer">
+        <p>Don't have an account? <a href="/Signup">Sign Up</a></p>
+        <p><a href="#">Forgot password?</a></p>
+    </div>
+</div>
+</body>
+
+</html>
+
+
+and under pages/SignUp.html:
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../assets/css/Auth.css">
+    <title>Sign In</title>
+</head>
+
+<body>
+<div class="auth-layout">
+    <h1>Welcome Back</h1>
+    <p>Sign in to continue to your account</p>
+    <form>
+        <div class="form-group">
+            <p>📧</p>
+            <input type="email" id="email" placeholder="Email address" required>
+            <div class="error-message" id="emailError"></div>
+        </div>
+        <div class="form-group">
+            <p>🔒</p>
+            <input type="password" id="password" placeholder="Password" required>
+            <div class="error-message" id="passwordError"></div>
+        </div>
+        <button type="submit">Sign In</button>
+    </form>
+    <div class="auth-footer">
+        <p>Don't have an account? <a href="/Signup">Sign Up</a></p>
+        <p><a href="#">Forgot password?</a></p>
+    </div>
+</div>
+</body>
+
+</html>
+
+moving on to the scripts :
+under scripts/events.js:
+// Simple Vanilla JS Event System
+class Emitter {
+    constructor(obj) {
+        this.obj = obj
+        this.eventTarget = document.createDocumentFragment()
+        ;['addEventListener', 'dispatchEvent', 'removeEventListener'].forEach(
+            this.delegate,
+            this,
+        )
+    }
+
+    delegate(method) {
+        this.obj[method] = this.eventTarget[method].bind(this.eventTarget)
+    }
+}
+
+class Events {
+    constructor(host) {
+        this.host = host
+        new Emitter(host) // add simple event system
+        host.on = (eventName, func) => {
+            host.addEventListener(eventName, func)
+            return host
+        }
+    }
+
+    trigger(event, detail, ev) {
+        if (typeof event === 'object' && event instanceof Event)
+            return this.host.dispatchEvent(event)
+
+        if (!ev) ev = new Event(event, { bubbles: false, cancelable: true })
+
+        ev.detail = { ...(detail || {}), host: this.host }
+
+        return this.host.dispatchEvent(ev)
+    }
+}
+
+export default Events
+
+under scripts/main.js:
+import * as bootstrap from 'bootstrap'
+import "./routes.js"
+
+(()=> {
+    'use strict'
+
+    window.onload = () => {
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.register('./sw.js').then(function (registration) {
+                // Service worker registered correctly.
+                console.log('ServiceWorker registration successful with scope:', registration.scope)
+            }).catch(function (err) {
+                // Troubles in registering the service worker. :(
+                console.log('Serviceworker registration failed:', err)
+            });
+        }
+    }
+    document.addEventListener('DOMContentLoaded', () =>{
+        [...document.querySelectorAll('[data-bs-toggle="tooltip"]')].map(el => new bootstrap.Tooltip(el));
+        [...document.querySelectorAll('[data-bs-toggle="popover"]')].map(el => new bootstrap.Popover(el));
+
+    });
+})();
+
+
+then under scripts/router.js:
+import Events from "./events.js";
+
+const ROUTER_TYPES = {
+        hash: "hash",
+        history: "history",
+    },
+    defer = (x) => {
+        setTimeout(() => x(), 10);
+    };
+
+/**
+    * SPA Router - replacement for Framework Routers (history and hash).
+*/
+class VanillaRouter {
+    constructor(options = {}) {
+        this.events = new Events(this);
+        this.options = { type: ROUTER_TYPES.hash, ...options };
+    }
+
+    /**
+        * Start listening for route changes.
+        * @returns {VanillaRouter} reference to itself.
+        */
+    listen() {
+        this.routeHash = Object.keys(this.options.routes);
+
+        if (!this.routeHash.includes("/")) throw TypeError("No home route found");
+
+        if (this.isHashRouter) {
+            window.addEventListener("hashchange", this._hashChanged.bind(this));
+            defer(() => this._tryNav(document.location.hash.substr(1)));
+        } else {
+            var href = document.location.origin;
+            if (this._findRoute(document.location.pathname)) {
+                href += document.location.pathname;
+            }
+            document.addEventListener("click", this._onNavClick.bind(this));
+            window.addEventListener("popstate", this._triggerPopState.bind(this));
+
+            defer(() => this._tryNav(href));
+        }
+        return this;
+    }
+
+    _hashChanged() {
+        this._tryNav(document.location.hash.substr(1));
+    }
+
+    _triggerPopState(e) {
+        this._triggerRouteChange(e.state.path, e.target.location.href);
+    }
+
+    _triggerRouteChange(path, url) {
+        this.events.trigger("route", {
+            route: this.options.routes[path],
+            path: path,
+            url: url,
+        });
+    }
+
+    _findRoute(url) {
+        var test =
+            "/" +
+            url.match(/([A-Za-z_0-9.]*)/gm, (match, token) => {
+                return token;
+            })[1];
+        return this.routeHash.includes(test) ? test : null;
+    }
+
+    _tryNav(href) {
+        const url = this._createUrl(href);
+        if (url.protocol.startsWith("http")) {
+            const routePath = this._findRoute(url.pathname);
+            if (routePath && this.options.routes[routePath]) {
+                if (this.options.type === "history") {
+                    window.history.pushState(
+                        { path: routePath },
+                        routePath,
+                        url.origin + url.pathname
+                    );
+                }
+                this._triggerRouteChange(routePath, url);
+                return true;
+            }
+        }
+    }
+
+    _createUrl(href) {
+        if (this.isHashRouter && href.startsWith("#")) {
+            href = href.substr(1);
+        }
+        return new URL(href, document.location.origin);
+    }
+
+    _onNavClick(e) {
+        // handle click in document
+        const href = e.target?.closest("[href]")?.href;
+        if (href && this._tryNav(href)) e.preventDefault();
+    }
+
+    /**
+        * Makes the router navigate to the given route
+        * @param {String} path
+        */
+    setRoute(path) {
+        if (!this._findRoute(path)) throw TypeError("Invalid route");
+
+        var href = this.isHashRouter ? "#" + path : document.location.origin + path;
+        history.replaceState(null, null, href);
+        this._tryNav(href);
+    }
+
+    get isHashRouter() {
+        return this.options.type === ROUTER_TYPES.hash;
+    }
+}
+
+export default VanillaRouter;
+
+under scripts/routes.js:
+const router = new VanillaRouter({
+    type: "history",
+    routes: {
+        "/": "SignIn",
+        "/Signup": "SignUp",
+    },
+})
+    .listen()
+    .on("route", async (e) => {
+        let mainElement = document.getElementById("mainContent");
+        if (!mainElement) {
+            console.error("Main content element not found");
+            return;
+        }
+        try {
+            let response = await fetch("pages/" + e.detail.route + ".html");
+            if (!response.ok) {
+                throw new Error(
+                    `Failed to load page. Status: ${response.status}`
+                );
+            }
+            let text = await response.text();
+            mainElement.innerHTML = text;
+        } catch (error) {
+            console.error("Error loading route:", error);
+            mainElement.innerHTML = `<p style="color: red;">Error loading page</p>`;
+        }
+    });
+
+under WEB-INF/beans.xml:
+<?xml version="1.0" encoding="UTF-8"?>
+<beans version="4.0"
+       xmlns="https://jakarta.ee/xml/ns/jakartaee" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="
+      https://jakarta.ee/xml/ns/jakartaee
+      https://jakarta.ee/xml/ns/jakartaee/beans_4_0.xsd"
+       bean-discovery-mode="annotated">
+
+   <!-- This descriptor configures Context and Dependeny Injection.
+        Actually, CDI 1.1 does not require this file. But the archetype contains it anyway to avoid deloyment errors for blank projects (WFLY-13306)   -->
+
+</beans>
+
+also there is index.html:
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Smart Parking</title>
+    <!-- <base href="/"/> -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet" integrity="sha384-T3c6CoIi6uLrA9TneNEoa7RxnatzjcDSCmG1MXxSR1GAsXEV/Dwwykc2MPK8M2HN" crossorigin="anonymous">
+    <link href="pwa.manifest" rel= "manifest"/>
+    <link rel="icon" type="image/svg+xml" href="images/favicon.svg"/>
+    <link rel="apple-touch-icon" type="image/svg+xml" href="images/favicon.svg"/>
+    <link rel="shortcut icon" type="image/svg+xml" href="images/favicon.svg"/>
+    <script type="importmap">
+        {
+          "imports": {
+            "@popperjs/core": "https://cdn.jsdelivr.net/npm/@popperjs/core@2.11.8/dist/esm/popper.min.js",
+            "bootstrap": "https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.esm.min.js"
+          }
+        }
+    </script>
+    <script type= "module" defer="defer" src="scripts/main.js"></script>
+</head>
+<body>
+<main id="mainContent">
+</main>
+</body>
+</html>
+
+and here pwa.manifest:
+{
+  "name": "Smart Parking ",
+  "short_name": "SHM",
+  "start_url": "/index.html",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#000000",
+  "icons": [
+    {
+      "src": "assets/icon.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ]
+}
+
+finally here is pom.xml:
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+    JBoss, Home of Professional Open Source
+    Copyright 2015, Red Hat, Inc. and/or its affiliates, and individual
+    contributors by the @authors tag. See the copyright.txt in the
+    distribution for a full listing of individual contributors.
+
+    Licensed under the Apache License, Version 2.0 (the "License");
+    you may not use this file except in compliance with the License.
+    You may obtain a copy of the License at
+    http://www.apache.org/licenses/LICENSE-2.0
+    Unless required by applicable law or agreed to in writing, software
+    distributed under the License is distributed on an "AS IS" BASIS,
+    WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+    See the License for the specific language governing permissions and
+    limitations under the License.
+-->
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/maven-v4_0_0.xsd">
+    <modelVersion>4.0.0</modelVersion>
+    <groupId>org.wildfly.examples</groupId>
+    <artifactId>smart-parking</artifactId>
+    <version>1.0.0-SNAPSHOT</version>
+
+    <packaging>war</packaging>
+    <name>smart-parking</name>
+    <description>Insert description for your project here.</description>
+
+    <properties>
+        <!-- Explicitly declaring the source encoding eliminates the following
+            message: -->
+        <!-- [WARNING] Using platform encoding (UTF-8 actually) to copy filtered
+            resources, i.e. build is platform dependent! -->
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <!-- JBoss dependency versions -->
+        <version.wildfly.maven.plugin>5.0.1.Final</version.wildfly.maven.plugin>
+        <version.wildfly.bom>34.0.1.Final</version.wildfly.bom>
+
+        <!--Use JUnit 5 here - the WildFly bom still brings 4.x -->
+        <version.junit5>5.10.1</version.junit5>
+
+        <!-- other plugin versions -->
+        <version.compiler.plugin>3.13.0</version.compiler.plugin>
+        <version.surefire.plugin>3.0.0</version.surefire.plugin>
+        <version.failsafe.plugin>3.5.2</version.failsafe.plugin>
+        <version.war.plugin>3.4.0</version.war.plugin>
+
+        <!-- maven-compiler-plugin -->
+        <maven.compiler.release>11</maven.compiler.release>
+    </properties>
+
+    <!--
+    Repositories are defined in the order that they should be used.
+    (1) Maven central, (2) JBoss community
+    By default maven central is used last, so it is redefined here to
+    force it to be used first.
+    -->
+    <repositories>
+        <repository>
+            <id>central</id>
+            <name>Main Apache Maven Repository</name>
+            <url>https://repo.maven.apache.org/maven2/</url>
+            <layout>default</layout>
+            <releases>
+                <enabled>true</enabled>
+                <updatePolicy>never</updatePolicy>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+                <updatePolicy>never</updatePolicy>
+            </snapshots>
+        </repository>
+        <repository>
+            <releases>
+                <updatePolicy>never</updatePolicy>
+            </releases>
+            <snapshots>
+                <updatePolicy>never</updatePolicy>
+            </snapshots>
+            <id>jboss-public-repository-group</id>
+            <name>JBoss Public Repository Group</name>
+            <url>https://repository.jboss.org/nexus/content/groups/public/</url>
+            <layout>default</layout>
+        </repository>
+    </repositories>
+    <pluginRepositories>
+        <pluginRepository>
+            <id>central</id>
+            <name>Main Apache Maven Repository</name>
+            <url>https://repo.maven.apache.org/maven2/</url>
+            <releases>
+                <enabled>true</enabled>
+                <updatePolicy>never</updatePolicy>
+            </releases>
+            <snapshots>
+                <enabled>false</enabled>
+                <updatePolicy>never</updatePolicy>
+            </snapshots>
+        </pluginRepository>
+        <pluginRepository>
+            <releases>
+            </releases>
+            <snapshots>
+            </snapshots>
+            <id>jboss-public-repository-group</id>
+            <name>JBoss Public Repository Group</name>
+            <url>https://repository.jboss.org/nexus/content/groups/public/</url>
+        </pluginRepository>
+    </pluginRepositories>
+
+    <dependencyManagement>
+        <dependencies>
+            <!-- JBoss distributes a complete set of Jakarta EE APIs including
+                a Bill of Materials (BOM). A BOM specifies the versions of a "stack" (or
+                a collection) of artifacts. We use this here so that we always get the correct
+                versions of artifacts (you can read this as the WildFly stack of the Jakarta EE APIs,
+                with some extras tools for your project, such as Arquillian for testing) -->
+            <dependency>
+                <groupId>org.wildfly.bom</groupId>
+                <artifactId>wildfly-ee-with-tools</artifactId>
+                <version>${version.wildfly.bom}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!--Define the JUnit5 bom. WildFly BOM still contains JUnit4, so we have to declare a version here -->
+            <dependency>
+                <groupId>org.junit</groupId>
+                <artifactId>junit-bom</artifactId>
+                <version>${version.junit5}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <dependencies>
+
+        <!-- Import the CDI API, we use provided scope as the API is included in WildFly -->
+        <dependency>
+            <groupId>jakarta.enterprise</groupId>
+            <artifactId>jakarta.enterprise.cdi-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>jakarta.persistence</groupId>
+            <artifactId>jakarta.persistence-api</artifactId>
+            <version>3.2.0</version>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>jakarta.ejb</groupId>
+            <artifactId>jakarta.ejb-api</artifactId>
+            <version>4.0.1</version>
+            <scope>provided</scope>
+        </dependency>
+
+
+        <!-- Import the JAX-RS API, we use provided scope as the API is included in WildFly -->
+        <dependency>
+            <groupId>jakarta.ws.rs</groupId>
+            <artifactId>jakarta.ws.rs-api</artifactId>
+            <scope>provided</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>jakarta.transaction</groupId>
+            <artifactId>jakarta.transaction-api</artifactId>
+            <version>2.0.0</version>
+        </dependency>
+
+
+        <!-- PostgreSQL Driver -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+            <version>42.6.0</version>
+        </dependency>
+
+        <!-- BCrypt for Password Hashing -->
+        <dependency>
+            <groupId>org.mindrot</groupId>
+            <artifactId>jbcrypt</artifactId>
+            <version>0.4</version>
+        </dependency>
+
+        <!-- JWT for Authentication -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt</artifactId>
+            <version>0.12.6</version>
+        </dependency>
+
+
+
+        <!-- Hibernate Validator (optional for input validation) -->
+        <dependency>
+            <groupId>org.hibernate.validator</groupId>
+            <artifactId>hibernate-validator</artifactId>
+            <version>8.0.0.Final</version>
+        </dependency>
+
+        <!-- Test scope dependencies -->
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.jboss.arquillian.junit5</groupId>
+            <artifactId>arquillian-junit5-container</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.jboss.arquillian.protocol</groupId>
+            <artifactId>arquillian-protocol-servlet-jakarta</artifactId>
+            <!-- temporary overriding as the 1.9.1.Final version pulled by
+                 WildFly BOM does not exist.
+            -->
+            <version>10.0.0.Final</version>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.wildfly.arquillian</groupId>
+            <artifactId>wildfly-arquillian-container-managed</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <dependency>
+            <groupId>org.jboss.resteasy</groupId>
+            <artifactId>resteasy-client</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!--See https://issues.redhat.com/browse/WFLY-19779 and https://github.com/wildfly/quickstart/pull/957/
+            httpclient needs commons-logging yet the server uses this instead,
+            to be fully compatible on apps we need to add this dependency whenever commons-logging is needed,
+            but on testing clients like this we could use commons-logging instead -->
+        <dependency>
+            <groupId>org.jboss.logging</groupId>
+            <artifactId>commons-logging-jboss-logging</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+
+    </dependencies>
+
+    <build>
+        <!-- deploys the quickstart on root web context -->
+        <finalName>ROOT</finalName>
+
+        <plugins>
+            <!--Configuration of the maven-compiler-plugin -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>${version.compiler.plugin}</version>
+                <configuration></configuration>
+            </plugin>
+
+            <!--Build configuration for the WAR plugin: -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-war-plugin</artifactId>
+                <version>${version.war.plugin}</version>
+                <configuration>
+                    <!-- Jakarta EE doesn't require web.xml, Maven needs to catch up! -->
+                    <failOnMissingWebXml>false</failOnMissingWebXml>
+                </configuration>
+            </plugin>
+
+            <!-- The WildFly plugin deploys your war to a local JBoss AS container -->
+            <plugin>
+                <groupId>org.wildfly.plugins</groupId>
+                <artifactId>wildfly-maven-plugin</artifactId>
+                <version>${version.wildfly.maven.plugin}</version>
+                <configuration>
+                    <feature-packs>
+                        <feature-pack>
+                            <location>org.wildfly:wildfly-galleon-pack:${version.wildfly.bom}</location>
+                        </feature-pack>
+                    </feature-packs>
+                    <layers>
+                        <!-- layers may be used to customize the server to provision-->
+                        <layer>cloud-server</layer>
+                    </layers>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>package</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-failsafe-plugin</artifactId>
+                <version>${version.failsafe.plugin}</version>
+                <configuration>
+                    <includes>
+                        <include>**/*IT</include>
+                    </includes>
+                </configuration>
+                <executions>
+                    <execution>
+                        <goals>
+                            <goal>integration-test</goal>
+                            <goal>verify</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+        </plugins>
+    </build>
+</project>
+
+
+when building this project with following Build and run a Jakarta EE application with WildFly in a few minutes. in wildfly officail website
+using mvn package verify
+ and ./target/server/bin/standalone.sh
+ i get error when visiting localhost:8080 it should be
