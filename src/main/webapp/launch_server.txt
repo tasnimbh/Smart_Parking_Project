@@ -1,9 +1,0 @@
-
-https://www.wildfly.org/get-started/
-
-
-cd smart-parking
-mvn clean wildfly:dev
-
-
-
