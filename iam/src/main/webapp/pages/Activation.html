@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="stylesheet" href="../styles/Auth.css">
+    <title>Account Activation</title>
+</head>
+
+<body>
+<div class="auth-layout">
+    <h1>Activate Your Account</h1>
+    <p>Enter the activation code sent to your email</p>
+    <form id="activationForm">
+        <div class="form-group">
+            <p>🔑</p>
+            <input type="text" id="activationCode" placeholder="Activation Code" required>
+            <div class="error-message" id="activationCodeError"></div>
+        </div>
+        <button type="submit" class="btn btn-primary">Activate</button>
+    </form>
+    <div class="auth-footer">
+        <p>Didn't receive the code? <a href="SignUp.html">Register Again</a></p>
+    </div>
+</div>
+<script src="../scripts/Auth.js"></script>
+</body>
+
+</html>
