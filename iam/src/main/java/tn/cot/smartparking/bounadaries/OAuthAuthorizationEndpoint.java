@@ -25,10 +25,14 @@ public class OAuthAuthorizationEndpoint {
         if (code_challenge == null  || state == null ) {
             return Response.status(Response.Status.BAD_REQUEST).entity("state or codeChallenge is missing").build();
         }
+        // Validate code_challenge format (optional but recommended)
+        if (!isValidCodeChallengeFormat(code_challenge)) {
+            return Response.status(Response.Status.BAD_REQUEST).entity("Invalid code_challenge format").build();
+        }
         oauth2Pkce.addChallenge(state, code_challenge);
         var secureCookie = new NewCookie.Builder("XSS-Cookie")
                 .httpOnly(true)
-                .secure(false)
+                .secure(true)
                 .sameSite(NewCookie.SameSite.STRICT)
                 .domain(uriInfo.getRequestUri().getHost())
                 .expiry(Date.from(Instant.now().plus(17, ChronoUnit.MINUTES)))
@@ -39,6 +43,11 @@ public class OAuthAuthorizationEndpoint {
                 .location(redirectUri)
                 .cookie(secureCookie)
                 .build();
+    }
+
+    // Utility function to validate Base64 URL format of code_challenge
+    private boolean isValidCodeChallengeFormat(String codeChallenge) {
+        return codeChallenge.matches("^[a-zA-Z0-9_-]{43,128}$");
     }
 
     @GET

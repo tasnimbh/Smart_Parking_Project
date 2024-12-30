@@ -22,7 +22,7 @@ public class Identity implements Serializable, Principal {
     @Column("password")
     private String password;
     @Column("creationDate")
-    private String  creationDate;
+    private String creationDate;
     @Column("role")
     private Long roles;
     @Column("scopes")
@@ -30,37 +30,65 @@ public class Identity implements Serializable, Principal {
     @Column("isAccountActivated")
     private boolean isAccountActivated;
 
-    public String getId() {return id;}
+    public String getId() {
+        return id;
+    }
 
-    public String getUsername() {return username;}
+    public String getUsername() {
+        return username;
+    }
 
-    public String getEmail() {return email;}
+    public String getEmail() {
+        return email;
+    }
 
-    public String getPassword() {return password;}
+    public String getPassword() {
+        return password;
+    }
 
-    public String getCreationDate() {return creationDate;}
+    public String getCreationDate() {
+        return creationDate;
+    }
 
-    public Long getRoles() {return roles;}
+    public Long getRoles() {
+        return roles;
+    }
 
-    public String getScopes() {return scopes;}
+    public String getScopes() {
+        return scopes;
+    }
 
-    public boolean getAccountActivated() {return isAccountActivated;}
+    public boolean getAccountActivated() {
+        return isAccountActivated;
+    }
 
-    public void setUsername(String username) {this.username = username;}
+    public void setUsername(String username) {
+        this.username = username;
+    }
 
-    public void setEmail(String email) {this.email = email;}
+    public void setEmail(String email) {
+        this.email = email;
+    }
 
     public void setPassword(String password) {
         this.password = password;
     }
 
-    public void setCreationDate(String creationDate) {this.creationDate = creationDate;}
+    public void setCreationDate(String creationDate) {
+        this.creationDate = creationDate;
+    }
 
-    public void setRoles(Long roles) {this.roles = roles;}
+    public void setRoles(Long roles) {
+        this.roles = roles;
+    }
 
-    public void setScopes(String scopes) {this.scopes = scopes;}
+    public void setScopes(String scopes) {
+        this.scopes = scopes;
+    }
 
-    public void setAccountActivated(boolean accountActivated) {this.isAccountActivated = accountActivated;}
+    public void setAccountActivated(boolean accountActivated) {
+        this.isAccountActivated = accountActivated;
+    }
 
     public Identity() {
         this.id = UUID.randomUUID().toString();
@@ -97,5 +125,4 @@ public class Identity implements Serializable, Principal {
     public void hashPassword(String password, Argon2Utils argonUtility) {
         this.password = argonUtility.hash(password.toCharArray());
     }
-
 }

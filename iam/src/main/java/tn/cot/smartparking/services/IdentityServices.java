@@ -39,7 +39,7 @@ public class IdentityServices {
         String activationCode = GenerateActivationCode();
         LocalDateTime expirationTime = LocalDateTime.now().plusMinutes(5); // Set expiration time
         activationCodes.put(activationCode, Pair.of(identity.getEmail(),expirationTime));
-        String message= "Welcome to Smart Hydro the best solution to monitor your Hydroponic Farm !! . Activate your account now and start your journey with Us .Here is your Activation Code: " + activationCode;
+        String message= "Welcome to Smart Parking the best solution to reserve your spot !! \n Activate your account now and start your journey with Us .Here is your Activation Code: " + activationCode;
         emailService.sendEmail("smartparking.services@gmail.com", identity.getEmail(), "Activate Account", message);
     }
 

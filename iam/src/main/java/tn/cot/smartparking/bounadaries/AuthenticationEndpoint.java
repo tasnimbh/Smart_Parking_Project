@@ -14,6 +14,7 @@ import tn.cot.smartparking.entities.Identity;
 import tn.cot.smartparking.services.IdentityServices;
 import tn.cot.smartparking.utils.Oauth2Pkce;
 
+
 @Path("/authenticate")
 public class AuthenticationEndpoint {
 
@@ -23,26 +24,23 @@ public class AuthenticationEndpoint {
     Oauth2Pkce oauth2Pkce;
 
     @POST
-    public Response authenticate(@FormParam("username") String username, @FormParam("password") String password, @CookieParam("XSS-Cookie") Cookie xssCookie) {
-        if (username == null || password == null || xssCookie == null) {
+    public Response authenticate(@FormParam("username") String username, @FormParam("password") String password, @CookieParam("XSS-Cookie") Cookie xssCookie ) {
+        if(username == null || password == null || xssCookie == null){
             return Response.status(Response.Status.NOT_ACCEPTABLE)
                     .entity("{\"message\":\"Invalid Credentials!\"}")
                     .type(MediaType.APPLICATION_JSON)
                     .build();
         }
-
         try {
-            System.out.println("Received XSS-Cookie: " + xssCookie.getValue());
-            Identity attemptedIdentity = identityServices.authenticateIdentity(username, password);
+            Identity attemptedIdentity = identityServices.authenticateIdentity(username,password);
             var state = xssCookie.getValue();
-
-            return Response.ok()
+            return Response.status(Response.Status.FOUND)
                     .entity("{\"AuthorizationCode\":\"" + oauth2Pkce.generateAuthorizationCode(state, attemptedIdentity) + "\", \"state\":\"" + state + "\"}")
                     .type(MediaType.APPLICATION_JSON)
                     .build();
         } catch (EJBException e) {
             return Response.status(Response.Status.UNAUTHORIZED)
-                    .entity("{\"message\":\"" + e.getMessage() + "\"}")
+                    .entity("{\"message\":\""+e.getMessage()+"\"}")
                     .type(MediaType.APPLICATION_JSON)
                     .build();
         }

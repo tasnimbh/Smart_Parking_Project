@@ -34,8 +34,7 @@ public class Oauth2Pkce {
     public Map<String, Object> CheckChallenge(String code, String codeVerifier) throws Exception {
         MessageDigest md = MessageDigest.getInstance("SHA-256");
         md.update(codeVerifier.getBytes(StandardCharsets.UTF_8));
-        String key = Base64.getEncoder().encodeToString(md.digest());
-        key = key.substring(0, key.length() - 1);
+        String key = Base64.getUrlEncoder().withoutPadding().encodeToString(md.digest());
         key = key.replace("/", "_").replace("+", "-");
 
         if (challenges.containsKey(key)) {
