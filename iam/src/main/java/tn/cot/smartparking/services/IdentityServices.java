@@ -17,6 +17,7 @@ import java.util.Map;
 @ApplicationScoped
 public class IdentityServices {
 
+
     @Inject
     IdentityRepository identityRepository;
     @Inject

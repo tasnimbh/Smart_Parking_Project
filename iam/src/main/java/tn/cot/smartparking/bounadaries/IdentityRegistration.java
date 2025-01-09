@@ -12,6 +12,7 @@ import tn.cot.smartparking.services.IdentityServices;
 public class IdentityRegistration {
 
 
+
     @Inject
     IdentityServices identityServices;
 

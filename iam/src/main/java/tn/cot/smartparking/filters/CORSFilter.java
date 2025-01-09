@@ -20,3 +20,5 @@ public class CORSFilter implements ContainerResponseFilter {
         cres.getHeaders().add("Access-Control-Max-Age", "1209600");
     }
 }
+
+

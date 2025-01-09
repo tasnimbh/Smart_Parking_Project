@@ -10,6 +10,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
+
 public enum Role {
     GUEST(0L),
     R_P00(1L),R_P01(1L<<1L),R_P02(1L<<2L),R_P03(1L<<3L),R_P04(1L<<4L),R_P05(1L<<5L),

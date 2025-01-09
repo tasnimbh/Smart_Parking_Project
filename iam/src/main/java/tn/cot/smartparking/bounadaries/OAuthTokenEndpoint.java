@@ -18,6 +18,7 @@ import java.util.Set;
 @Path("/oauth/token")
 public class OAuthTokenEndpoint {
 
+
     @Inject
     JwtManager jwtManager;
     @Inject

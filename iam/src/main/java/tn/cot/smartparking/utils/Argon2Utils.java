@@ -24,6 +24,8 @@ public class Argon2Utils {
         }
     }
 
+
+
     public static String hash(char[] clientHash) {
         try {
             return argon2.hash(iterations, memory, threadNumber, clientHash);

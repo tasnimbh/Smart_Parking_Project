@@ -11,6 +11,7 @@ import org.eclipse.microprofile.config.ConfigProvider;
 
 import java.util.Properties;
 
+
 @ApplicationScoped
 public class EmailService {
     private static final Config config = ConfigProvider.getConfig();

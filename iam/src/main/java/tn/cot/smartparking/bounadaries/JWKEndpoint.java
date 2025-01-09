@@ -17,6 +17,7 @@ public class JWKEndpoint {
     @Inject
     private JwtManager jwtManager;
 
+
     @GET
     @Path("/{kid}")
     @Produces(MediaType.APPLICATION_JSON)

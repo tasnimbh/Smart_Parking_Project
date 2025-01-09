@@ -15,6 +15,7 @@ import tn.cot.smartparking.services.IdentityServices;
 import tn.cot.smartparking.utils.Oauth2Pkce;
 
 
+
 @Path("/authenticate")
 public class AuthenticationEndpoint {
 

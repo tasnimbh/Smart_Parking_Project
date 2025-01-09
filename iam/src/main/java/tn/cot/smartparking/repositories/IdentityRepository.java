@@ -11,3 +11,4 @@ public interface IdentityRepository extends CrudRepository<Identity, String> {
     Optional<Identity> findByEmail(String email);
     Optional<Identity> findByUsername(String username);
 }
+

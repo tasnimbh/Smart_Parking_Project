@@ -17,6 +17,8 @@ document.addEventListener("DOMContentLoaded", () => {
             usernameError.textContent = "";
             passwordError.textContent = "";
 
+
+
             try {
                 const response = await fetch("https://smartparkingcot.me/iam-1.0/rest-iam/identity/register", {
                     method: "POST",

@@ -10,3 +10,4 @@
         Actually, CDI 1.1 does not require this file. But the archetype contains it anyway to avoid deloyment errors for blank projects (WFLY-13306)   -->
 
 </beans>
+
